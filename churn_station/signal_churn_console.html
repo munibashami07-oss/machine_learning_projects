@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SIGNAL — Churn Risk Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  :root{
+    --outer-1:#EEF2F8;
+    --outer-2:#DCE3EE;
+    --ink:#101A28;
+    --panel:#132133;
+    --panel-2:#0F1B29;
+    --panel-soft:#18283B;
+    --line: rgba(255,255,255,0.08);
+    --line-strong: rgba(255,255,255,0.14);
+    --text:#E8EEF6;
+    --text-dim:#93A2B6;
+    --text-faint:#5C6C80;
+    --ink-text:#1C2733;
+    --ink-text-dim:#647186;
+    --accent:#4EA2FF;
+    --accent-soft: rgba(78,162,255,0.16);
+    --gold:#F0A63C;
+    --danger:#FF6161;
+    --radius: 16px;
+  }
+
+  *{ box-sizing:border-box; }
+
+  html,body{
+    margin:0; padding:0; min-height:100%;
+    background:
+      radial-gradient(1px 1px at 20px 20px, rgba(28,39,51,0.06) 1px, transparent 0) 0 0/28px 28px,
+      linear-gradient(160deg, var(--outer-1), var(--outer-2));
+    color:var(--ink-text);
+    font-family:'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .wrap{ max-width:1320px; margin:0 auto; padding:22px 22px 0; }
+
+  /* ---------- Header ---------- */
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:6px 4px 20px;
+  }
+  .brand{ display:flex; align-items:baseline; gap:12px; }
+  .brand-mark{
+    font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:21px;
+    letter-spacing:0.03em; color:var(--ink-text);
+  }
+  .brand-sub{
+    font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:0.15em;
+    text-transform:uppercase; color:var(--ink-text-dim);
+  }
+  .api-row{ display:flex; align-items:center; gap:10px; }
+  .api-pill{
+    display:flex; align-items:center; gap:8px;
+    background:#fff; border:1px solid rgba(28,39,51,0.1); border-radius:999px;
+    padding:7px 8px 7px 14px; box-shadow:0 1px 2px rgba(28,39,51,0.04);
+  }
+  .api-dot{
+    width:7px; height:7px; border-radius:50%; background:var(--text-faint);
+    box-shadow:0 0 0 3px rgba(92,108,128,0.12);
+    transition:background .25s ease, box-shadow .25s ease;
+  }
+  .api-dot.ok{ background:#2FBE7A; box-shadow:0 0 0 3px rgba(47,190,122,0.16); }
+  .api-dot.bad{ background:var(--danger); box-shadow:0 0 0 3px rgba(255,97,97,0.16); }
+  .api-label{ font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--ink-text-dim); }
+  .api-input{
+    background:var(--outer-1); border:1px solid rgba(28,39,51,0.1); color:var(--ink-text);
+    font-family:'IBM Plex Mono', monospace; font-size:11.5px; padding:6px 12px; border-radius:999px;
+    width:190px; outline:none;
+  }
+  .api-input:focus{ border-color:var(--accent); background:#fff; }
+
+  /* ---------- Layout ---------- */
+  .console{ display:grid; grid-template-columns: 1fr 400px; gap:20px; align-items:start; }
+  @media (max-width: 980px){ .console{ grid-template-columns: 1fr; } }
+
+  .panel{
+    background:linear-gradient(175deg, var(--panel), var(--panel-2));
+    border:1px solid rgba(255,255,255,0.06); border-radius:var(--radius);
+    padding:20px 22px;
+    box-shadow: 0 18px 34px -18px rgba(16,26,40,0.35), 0 2px 0 rgba(255,255,255,0.03) inset;
+  }
+
+  /* ---------- Form ---------- */
+  .section-label{
+    font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:0.16em;
+    text-transform:uppercase; color:var(--accent); margin:0 0 15px; opacity:0.95;
+    display:flex; align-items:center; gap:8px;
+  }
+  .section-label::before{ content:'—'; opacity:0.7; }
+  .section + .section{ margin-top:24px; padding-top:22px; border-top:1px solid var(--line); }
+
+  .grid{ display:grid; grid-template-columns: repeat(3, 1fr); gap:14px 16px; }
+  @media (max-width: 640px){ .grid{ grid-template-columns: 1fr 1fr; } }
+
+  .field{ display:flex; flex-direction:column; gap:6px; }
+  .field label{
+    font-family:'IBM Plex Mono', monospace; font-size:10px; letter-spacing:0.06em;
+    color:var(--text-dim); text-transform:uppercase;
+  }
+
+  select.field-input, input.field-input{
+    appearance:none; -webkit-appearance:none;
+    background:var(--panel-soft); border:1px solid var(--line-strong); color:var(--text);
+    font-family:'IBM Plex Sans', sans-serif; font-size:13px;
+    padding:9px 12px; border-radius:9px; outline:none;
+    transition:border-color .15s ease;
+  }
+  select.field-input{
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2393A2B6'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 12px center;
+    padding-right:30px;
+  }
+  select.field-input:focus, input.field-input:focus{ border-color:var(--accent); }
+
+  /* toggle switch */
+  .toggle{
+    display:flex; align-items:center; gap:9px; cursor:pointer; user-select:none;
+    background:var(--panel-soft); border:1px solid var(--line-strong); border-radius:9px;
+    padding:8px 12px; height:38px;
+  }
+  .toggle input{ display:none; }
+  .toggle-icon{ width:15px; height:15px; flex:none; color:var(--text-faint); transition:color .15s ease; }
+  .toggle input:checked ~ .toggle-icon{ color:var(--accent); }
+  .switch{
+    position:relative; width:32px; height:17px; border-radius:999px;
+    background:#26333F; transition:background .18s ease; flex:none;
+  }
+  .switch::after{
+    content:''; position:absolute; top:2px; left:2px; width:13px; height:13px;
+    border-radius:50%; background:var(--text-dim); transition:transform .18s ease, background .18s ease;
+  }
+  .toggle input:checked + .switch{ background:var(--accent-soft); }
+  .toggle input:checked + .switch::after{ transform:translateX(15px); background:var(--accent); }
+  .toggle-text{ font-size:12.5px; color:var(--text-dim); letter-spacing:0.01em; }
+  .toggle input:checked ~ .toggle-text{ color:var(--text); }
+
+  .predict-row{ margin-top:24px; display:flex; align-items:center; gap:16px; }
+  .predict-btn{
+    font-family:'Space Grotesk', sans-serif; font-weight:600; font-size:14px;
+    color:#08141F; background:linear-gradient(120deg, var(--accent), #7cc0ff);
+    border:none; border-radius:10px; padding:13px 26px; cursor:pointer;
+    box-shadow:0 10px 22px -8px rgba(78,162,255,0.55);
+    transition:transform .12s ease, box-shadow .12s ease;
+  }
+  .predict-btn:hover{ transform:translateY(-1px); }
+  .predict-btn:disabled{ opacity:0.6; cursor:progress; transform:none; }
+  .predict-hint{ font-size:12px; color:var(--ink-text-dim); }
+
+  /* ---------- Result panel ---------- */
+  .result-panel{ position:sticky; top:22px; display:flex; flex-direction:column; gap:18px; }
+
+  .beacon-shell{
+    position:relative; height:250px; border-radius:var(--radius);
+    background:radial-gradient(circle at 50% 42%, rgba(78,162,255,0.10), transparent 60%), var(--panel);
+    border:1px solid rgba(255,255,255,0.06); overflow:hidden;
+  }
+  .beacon-glow{
+    position:absolute; inset:0; pointer-events:none;
+    background:radial-gradient(circle at 50% 45%, var(--glow-c, rgba(78,162,255,0.35)), transparent 55%);
+    filter:blur(6px); opacity:0.85; transition:background 0.6s ease;
+  }
+  .beacon-canvas{ position:absolute; inset:0; }
+  .beacon-readout{
+    position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; pointer-events:none;
+  }
+  .beacon-pct{
+    font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:42px; letter-spacing:-0.01em;
+    color:#fff; text-shadow:0 2px 24px rgba(0,0,0,0.55);
+  }
+  .beacon-label{
+    font-family:'IBM Plex Mono', monospace; font-size:11px; letter-spacing:0.16em; text-transform:uppercase;
+    margin-top:2px; color:rgba(255,255,255,0.75); text-shadow:0 1px 12px rgba(0,0,0,0.5);
+  }
+  .beacon-status{
+    position:absolute; left:14px; top:12px; font-family:'IBM Plex Mono', monospace; font-size:10px;
+    letter-spacing:0.1em; text-transform:uppercase; color:var(--text-faint); z-index:2;
+  }
+  .beacon-error{
+    position:absolute; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center;
+    gap:9px; text-align:center; padding:0 24px; background:rgba(10,16,24,0.94); z-index:3;
+  }
+  .beacon-error.show{ display:flex; }
+  .beacon-error .glyph{ font-size:24px; color:var(--danger); }
+  .beacon-error p{ margin:0; font-size:12px; line-height:1.5; color:var(--text-dim); }
+  .beacon-error code{
+    font-family:'IBM Plex Mono', monospace; font-size:10.5px; color:var(--gold);
+    background:rgba(240,166,60,0.12); padding:2px 6px; border-radius:5px;
+  }
+  .retry-btn{
+    font-family:'IBM Plex Mono', monospace; font-size:11px; color:var(--text);
+    background:var(--panel-soft); border:1px solid var(--line-strong); border-radius:7px;
+    padding:6px 14px; cursor:pointer; margin-top:2px;
+  }
+  .retry-btn:hover{ border-color:var(--accent); }
+
+  .factors-panel{ padding:18px 20px; }
+  .factors-empty{ font-size:12.5px; color:var(--text-faint); line-height:1.6; }
+
+  .factors-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .factor-card{
+    background:var(--panel-soft); border:1px solid var(--line); border-radius:12px;
+    padding:14px 14px 12px; display:flex; flex-direction:column; gap:10px;
+  }
+  .factor-icon{
+    width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+    flex:none;
+  }
+  .factor-icon.pos{ background:rgba(255,97,97,0.14); color:var(--danger); }
+  .factor-icon.neg{ background:rgba(78,162,255,0.14); color:var(--accent); }
+  .factor-icon svg{ width:19px; height:19px; }
+  .factor-name{ font-size:12.5px; font-weight:600; color:var(--text); line-height:1.3; }
+  .factor-value{ font-family:'IBM Plex Mono', monospace; font-size:10.5px; }
+  .factor-value.pos{ color:var(--danger); }
+  .factor-value.neg{ color:var(--accent); }
+  .factor-bar{ display:flex; gap:3px; }
+  .factor-bar i{ flex:1; height:5px; border-radius:2px; background:var(--line-strong); }
+  .factor-bar i.on.pos{ background:var(--danger); }
+  .factor-bar i.on.neg{ background:var(--accent); }
+  .factor-dir{ display:flex; align-items:center; gap:5px; font-size:10.5px; color:var(--text-faint); }
+  .factor-dir svg{ width:11px; height:11px; }
+  .factor-third{ grid-column:1 / -1; }
+
+  footer{
+    margin:26px -22px 0; padding:16px 22px; border-top:1px solid rgba(28,39,51,0.08);
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    font-family:'IBM Plex Mono', monospace; font-size:10.5px; letter-spacing:0.08em;
+    color:var(--ink-text-dim);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand">
+      <span class="brand-mark">SIGNAL</span>
+      <span class="brand-sub">Churn Risk Console</span>
+    </div>
+    <div class="api-row">
+      <div class="api-pill">
+        <span class="api-dot" id="apiDot"></span>
+        <span class="api-label" id="apiLabel">Not checked</span>
+      </div>
+      <input class="api-input" id="apiUrl" value="http://127.0.0.1:8000" spellcheck="false" />
+    </div>
+  </div>
+
+  <div class="console">
+
+    <!-- LEFT: intake form -->
+    <div class="panel">
+
+      <div class="section">
+        <div class="section-label">Account</div>
+        <div class="grid">
+          <div class="field">
+            <label>Gender</label>
+            <select class="field-input" id="gender">
+              <option>Female</option><option>Male</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Tenure (months)</label>
+            <input class="field-input" id="tenure" type="number" min="0" value="3" />
+          </div>
+          <div class="field">
+            <label>&nbsp;</label>
+            <label class="toggle">
+              <input type="checkbox" id="SeniorCitizen">
+              <span class="switch"></span>
+              <span class="toggle-text">Senior citizen</span>
+            </label>
+          </div>
+          <div class="field">
+            <label>&nbsp;</label>
+            <label class="toggle">
+              <input type="checkbox" id="Partner">
+              <span class="switch"></span>
+              <span class="toggle-text">Has partner</span>
+            </label>
+          </div>
+          <div class="field">
+            <label>&nbsp;</label>
+            <label class="toggle">
+              <input type="checkbox" id="Dependents">
+              <span class="switch"></span>
+              <span class="toggle-text">Has dependents</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Services</div>
+        <div class="grid">
+          <div class="field">
+            <label>&nbsp;</label>
+            <label class="toggle">
+              <input type="checkbox" id="PhoneService">
+              <svg class="toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              <span class="toggle-text">Phone service</span>
+            </label>
+          </div>
+          <div class="field">
+            <label>Multiple lines</label>
+            <select class="field-input" id="MultipleLines">
+              <option>No phone service</option><option>No</option><option>Yes</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Internet service</label>
+            <select class="field-input" id="InternetService">
+              <option>DSL</option><option>Fiber optic</option><option>No</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Online security</label>
+            <select class="field-input" id="OnlineSecurity">
+              <option>No</option><option>Yes</option><option>No internet service</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Online backup</label>
+            <select class="field-input" id="OnlineBackup">
+              <option>Yes</option><option>No</option><option>No internet service</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Device protection</label>
+            <select class="field-input" id="DeviceProtection">
+              <option>No</option><option>Yes</option><option>No internet service</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Tech support</label>
+            <select class="field-input" id="TechSupport">
+              <option>No</option><option>Yes</option><option>No internet service</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Streaming TV</label>
+            <select class="field-input" id="StreamingTV">
+              <option>No</option><option>Yes</option><option>No internet service</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Streaming movies</label>
+            <select class="field-input" id="StreamingMovies">
+              <option>No</option><option>Yes</option><option>No internet service</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-label">Contract &amp; Billing</div>
+        <div class="grid">
+          <div class="field">
+            <label>Contract</label>
+            <select class="field-input" id="Contract">
+              <option>Month-to-month</option><option>One year</option><option>Two year</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Payment method</label>
+            <select class="field-input" id="PaymentMethod">
+              <option>Electronic check</option><option>Mailed check</option>
+              <option>Bank transfer (automatic)</option><option>Credit card (automatic)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>&nbsp;</label>
+            <label class="toggle">
+              <input type="checkbox" id="PaperlessBilling" checked>
+              <span class="switch"></span>
+              <span class="toggle-text">Paperless billing</span>
+            </label>
+          </div>
+          <div class="field">
+            <label>Monthly charges ($)</label>
+            <input class="field-input" id="MonthlyCharges" type="number" step="0.01" min="0" value="29.85" />
+          </div>
+          <div class="field">
+            <label>Total charges ($)</label>
+            <input class="field-input" id="TotalCharges" type="number" step="0.01" min="0" value="29.85" />
+          </div>
+        </div>
+      </div>
+
+      <div class="predict-row">
+        <button class="predict-btn" id="predictBtn">Analyze customer</button>
+        <span class="predict-hint">Sends this profile to your local <code>/predict</code> endpoint</span>
+      </div>
+    </div>
+
+    <!-- RIGHT: result -->
+    <div class="result-panel">
+      <div class="panel beacon-shell">
+        <div class="beacon-glow" id="beaconGlow"></div>
+        <div class="beacon-canvas" id="beaconCanvas"></div>
+        <div class="beacon-status">Risk beacon</div>
+        <div class="beacon-readout">
+          <div class="beacon-pct" id="beaconPct">—</div>
+          <div class="beacon-label" id="beaconLabel">Awaiting input</div>
+        </div>
+        <div class="beacon-error" id="beaconError">
+          <div class="glyph">⚠</div>
+          <p>Can't reach the prediction API at<br><code id="errUrl">http://127.0.0.1:8000</code></p>
+          <p>Make sure <code>uvicorn</code> is running, and that CORS is enabled on the endpoint.</p>
+          <button class="retry-btn" id="retryBtn">Retry</button>
+        </div>
+      </div>
+
+      <div class="panel factors-panel">
+        <div class="section-label" style="margin-bottom:14px;">Top contributing factors</div>
+        <div id="factorsBody">
+          <div class="factors-empty">Run an analysis to see which signals pushed this prediction toward or away from churn.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>
+    <span>SIGNAL · Live Pakistan ML Internship · Explainable Retention Engine</span>
+  </footer>
+</div>
+
+<script>
+(function(){
+
+  /* ================= icon library (feature -> svg path) ================= */
+  var ICONS = {
+    security: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9.5 12.5l1.8 1.8 3.2-3.6"/>',
+    securityX: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9.5 9.5l5 5M14.5 9.5l-5 5"/>',
+    contract: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/>',
+    contractShort: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6"/><circle cx="16" cy="16.5" r="2.6"/>',
+    signal: '<path d="M4 20h.01M9 20v-4M14 20v-8M19 20V6"/>',
+    tenure: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.2 2"/>',
+    payment: '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/><path d="M7 15h4"/>',
+    internet: '<path d="M5 12.5a11 11 0 0 1 14 0"/><path d="M8.5 16a6 6 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1"/>',
+    generic: '<circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/>'
+  };
+
+  function iconFor(feature){
+    var f = feature.toLowerCase();
+    if(f.indexOf('security') > -1) return f.indexOf('no') === 0 || f.indexOf('_no')>-1 ? ICONS.securityX : ICONS.security;
+    if(f.indexOf('contract') > -1) return f.indexOf('month') > -1 ? ICONS.contractShort : ICONS.contract;
+    if(f.indexOf('tenure') > -1) return ICONS.tenure;
+    if(f.indexOf('payment') > -1 || f.indexOf('check') > -1) return ICONS.payment;
+    if(f.indexOf('internet') > -1 || f.indexOf('fiber') > -1) return ICONS.internet;
+    return ICONS.generic;
+  }
+
+  function humanizeFeature(feature){
+    var f = feature.replace(/_/g, ' — ');
+    return f.length > 26 ? f.slice(0,24) + '…' : f;
+  }
+
+  /* ================= 3D risk beacon (faceted gem) ================= */
+  var shell = document.getElementById('beaconCanvas');
+  var scene = new THREE.Scene();
+  var camera = new THREE.PerspectiveCamera(42, shell.clientWidth/shell.clientHeight, 0.1, 100);
+  camera.position.set(0, 0, 5.2);
+
+  var renderer = new THREE.WebGLRenderer({ antialias:true, alpha:true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(shell.clientWidth, shell.clientHeight);
+  shell.appendChild(renderer.domElement);
+
+  scene.add(new THREE.AmbientLight(0x2a3648, 1.1));
+
+  var warmLight = new THREE.PointLight(0xF0A63C, 2.2, 12);
+  warmLight.position.set(-2.6, 2.2, 2.4);
+  scene.add(warmLight);
+
+  var coolLight = new THREE.PointLight(0x4EA2FF, 2.4, 12);
+  coolLight.position.set(2.4, -1.6, 2.6);
+  scene.add(coolLight);
+
+  var rim = new THREE.PointLight(0xffffff, 0.6, 10);
+  rim.position.set(0, 0, -3);
+  scene.add(rim);
+
+  var gem = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(1.28, 0),
+    new THREE.MeshStandardMaterial({ color:0x2b3648, flatShading:true, metalness:0.55, roughness:0.28 })
+  );
+  scene.add(gem);
+
+  var edgeLines = new THREE.LineSegments(
+    new THREE.EdgesGeometry(gem.geometry),
+    new THREE.LineBasicMaterial({ color:0x8fb3e0, transparent:true, opacity:0.35 })
+  );
+  gem.add(edgeLines);
+
+  var ringA = new THREE.Mesh(
+    new THREE.TorusGeometry(1.85, 0.01, 8, 90),
+    new THREE.MeshBasicMaterial({ color:0x4EA2FF, transparent:true, opacity:0.3 })
+  );
+  ringA.rotation.x = Math.PI/2.3;
+  scene.add(ringA);
+
+  var ringB = new THREE.Mesh(
+    new THREE.TorusGeometry(2.15, 0.007, 8, 90),
+    new THREE.MeshBasicMaterial({ color:0xF0A63C, transparent:true, opacity:0.22 })
+  );
+  ringB.rotation.x = Math.PI/1.6;
+  ringB.rotation.y = 0.6;
+  scene.add(ringB);
+
+  var pulse = { t:0, speed:0.18, targetScale:1 };
+  var animScale = 1;
+  var glowEl = document.getElementById('beaconGlow');
+
+  function riskGlow(p){
+    if(p == null) return 'rgba(78,162,255,0.30)';
+    if(p <= 0.5){
+      var t = p/0.5;
+      return 'rgba(' + Math.round(78+(240-78)*t) + ',' + Math.round(162+(166-162)*t) + ',' + Math.round(255+(60-255)*t) + ',0.42)';
+    }
+    var t2 = (p-0.5)/0.5;
+    return 'rgba(' + Math.round(240+(255-240)*t2) + ',' + Math.round(166+(97-166)*t2) + ',' + Math.round(60+(97-60)*t2) + ',0.45)';
+  }
+
+  function setBeaconIdle(){
+    pulse.speed = 0.14; pulse.targetScale = 1;
+    glowEl.style.background = 'radial-gradient(circle at 50% 45%, ' + riskGlow(null) + ', transparent 55%)';
+  }
+
+  function setBeaconRisk(p){
+    pulse.speed = 0.22 + p*0.9;
+    pulse.targetScale = 1 + p*0.14;
+    glowEl.style.background = 'radial-gradient(circle at 50% 45%, ' + riskGlow(p) + ', transparent 58%)';
+    var warmMix = p > 0.5 ? Math.min(1, (p-0.5)*2) : 0;
+    warmLight.intensity = 1.6 + warmMix*2.2;
+    coolLight.intensity = p < 0.5 ? 2.2 + (0.5-p)*3 : 1.2;
+  }
+
+  function animate(){
+    requestAnimationFrame(animate);
+    pulse.t += 0.016 * pulse.speed;
+    var wobble = Math.sin(pulse.t*3.2) * 0.03 * pulse.speed;
+    animScale += ((pulse.targetScale + wobble) - animScale) * 0.07;
+    gem.scale.setScalar(animScale);
+
+    gem.rotation.y += 0.0028 + pulse.speed*0.0012;
+    gem.rotation.x += 0.0011;
+    ringA.rotation.z += 0.0024;
+    ringB.rotation.z -= 0.0016;
+
+    renderer.render(scene, camera);
+  }
+  animate();
+
+  window.addEventListener('resize', function(){
+    var w = shell.clientWidth, h = shell.clientHeight;
+    camera.aspect = w/h; camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  });
+
+  /* ================= form -> payload ================= */
+  function val(id){ return document.getElementById(id).value; }
+  function boolYesNo(id){ return document.getElementById(id).checked ? 'Yes' : 'No'; }
+
+  function buildPayload(){
+    return {
+      gender: val('gender'),
+      SeniorCitizen: document.getElementById('SeniorCitizen').checked ? 1 : 0,
+      Partner: boolYesNo('Partner'),
+      Dependents: boolYesNo('Dependents'),
+      tenure: parseInt(val('tenure') || '0', 10),
+      PhoneService: boolYesNo('PhoneService'),
+      MultipleLines: val('MultipleLines'),
+      InternetService: val('InternetService'),
+      OnlineSecurity: val('OnlineSecurity'),
+      OnlineBackup: val('OnlineBackup'),
+      DeviceProtection: val('DeviceProtection'),
+      TechSupport: val('TechSupport'),
+      StreamingTV: val('StreamingTV'),
+      StreamingMovies: val('StreamingMovies'),
+      Contract: val('Contract'),
+      PaperlessBilling: boolYesNo('PaperlessBilling'),
+      PaymentMethod: val('PaymentMethod'),
+      MonthlyCharges: parseFloat(val('MonthlyCharges') || '0'),
+      TotalCharges: String(val('TotalCharges') || '0')
+    };
+  }
+
+  /* ================= result rendering ================= */
+  var pctEl = document.getElementById('beaconPct');
+  var labelEl = document.getElementById('beaconLabel');
+  var errPanel = document.getElementById('beaconError');
+  var errUrlEl = document.getElementById('errUrl');
+  var factorsBody = document.getElementById('factorsBody');
+  var apiDot = document.getElementById('apiDot');
+  var apiLabel = document.getElementById('apiLabel');
+
+  function riskLabel(p){
+    if(p < 0.25) return 'Low risk';
+    if(p < 0.5) return 'Moderate risk';
+    if(p < 0.75) return 'Elevated risk';
+    return 'Critical risk';
+  }
+
+  function showError(url){
+    errUrlEl.textContent = url + '/predict';
+    errPanel.classList.add('show');
+    pctEl.textContent = '—';
+    labelEl.textContent = 'Connection failed';
+    apiDot.className = 'api-dot bad';
+    apiLabel.textContent = 'API unreachable';
+    setBeaconIdle();
+  }
+
+  function clearError(){ errPanel.classList.remove('show'); }
+
+  function renderFactors(factors){
+    if(!factors || !factors.length){
+      factorsBody.innerHTML = '<div class="factors-empty">No factor data returned.</div>';
+      return;
+    }
+    var maxAbs = Math.max.apply(null, factors.map(function(f){ return Math.abs(f.shap_value); }));
+    var html = '<div class="factors-grid">';
+    factors.forEach(function(f, i){
+      var isPos = f.shap_value >= 0;      // pushes toward churn
+      var dirClass = isPos ? 'pos' : 'neg';
+      var strength = maxAbs > 0 ? Math.abs(f.shap_value)/maxAbs : 0;
+      var filledBars = Math.max(1, Math.round(strength*5));
+      var bars = '';
+      for(var b=0; b<5; b++){
+        bars += '<i class="' + (b < filledBars ? 'on '+dirClass : '') + '"></i>';
+      }
+      var extraClass = (i === 2) ? ' factor-third' : '';
+      html +=
+        '<div class="factor-card' + extraClass + '">' +
+          '<div class="factor-icon ' + dirClass + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + iconFor(f.feature) + '</svg></div>' +
+          '<div>' +
+            '<div class="factor-name">' + humanizeFeature(f.feature) + '</div>' +
+            '<div class="factor-value ' + dirClass + '">' + (isPos ? 'Risk factor: +' : 'Retention factor: ') + f.shap_value.toFixed(3) + '</div>' +
+          '</div>' +
+          '<div class="factor-bar">' + bars + '</div>' +
+          '<div class="factor-dir">' +
+            (isPos
+              ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span>Pushes toward churn</span>'
+              : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 12H5M11 6l-6 6 6 6"/></svg><span>Pushes toward retention</span>') +
+          '</div>' +
+        '</div>';
+    });
+    html += '</div>';
+    factorsBody.innerHTML = html;
+  }
+
+  /* ================= predict flow ================= */
+  var btn = document.getElementById('predictBtn');
+  var apiUrlInput = document.getElementById('apiUrl');
+  var retryBtn = document.getElementById('retryBtn');
+
+  function runPredict(){
+    var apiUrl = apiUrlInput.value.replace(/\/+$/, '');
+    clearError();
+    btn.disabled = true;
+    btn.textContent = 'Analyzing…';
+    labelEl.textContent = 'Analyzing…';
+    pctEl.textContent = '···';
+
+    fetch(apiUrl + '/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(buildPayload())
+    })
+    .then(function(res){
+      if(!res.ok){ throw new Error('HTTP ' + res.status); }
+      return res.json();
+    })
+    .then(function(data){
+      apiDot.className = 'api-dot ok';
+      apiLabel.textContent = 'API connected';
+
+      var p = data.churn_probability;
+      pctEl.textContent = Math.round(p*100) + '%';
+      labelEl.textContent = riskLabel(p);
+      setBeaconRisk(p);
+      renderFactors(data.top_3_contributing_factors);
+    })
+    .catch(function(err){
+      showError(apiUrl);
+    })
+    .finally(function(){
+      btn.disabled = false;
+      btn.textContent = 'Analyze customer';
+    });
+  }
+
+  btn.addEventListener('click', runPredict);
+  retryBtn.addEventListener('click', runPredict);
+
+  setBeaconIdle();
+})();
+</script>
+</body>
+</html>
